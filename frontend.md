@@ -23,7 +23,7 @@ This document outlines the frontend technical approach for the Regency Salma pla
 - **Interceptors:** To automatically attach the bearer token, handle token refresh logic, and globally catch 401/403 errors to trigger a logout or permission-denied flow.
 
 ## Design Token & Component Strategy
-- **Tokens:** Define colors, typography, spacing, and radii in a central `theme.ts` file. Do not use hardcoded values in components.
+- **Tokens:** Define colors, typography, spacing, and radii in a central `theme.ts` file. Do not use hardcoded values in components. All typography must strictly use Plus Jakarta Sans; no serif fonts or default system fonts are permitted.
 - **Styling:** React Native `StyleSheet` or a lightweight styling solution like NativeWind or Restyle, strictly bound to our design tokens.
 - **Shared Components:** A `components/ui` folder for reusable atomic elements (Buttons, Cards, Inputs, StatusBadges) ensuring absolute visual consistency.
 

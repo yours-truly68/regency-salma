@@ -42,7 +42,7 @@ The color system relies on earthy, elegant tones to create a calming and premium
   - **Danger/Error:** Soft red.
 
 ## Typography
-- **Typeface:** Modern, highly legible, geometric sans-serif. We will rely on system defaults initially, transitioning to custom fonts like Inter or Poppins only if explicitly added to the project.
+- **Typeface:** Plus Jakarta Sans. This is the single primary font family for the application, ensuring a modern, clean, architectural, and premium feel. No serif fonts are permitted.
 - **Hierarchy:**
   - **Headings:** Bold, clear, and slightly tighter letter-spacing.
   - **Body:** Regular weight, generous line height.
