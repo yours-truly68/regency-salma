@@ -22,7 +22,7 @@ const refreshSchema = z.object({
   refreshToken: z.string(),
 });
 
-router.post('/register', async (req, res, next) => {
+router.post('/register', async (req, res, _next) => {
   try {
     const { email, password } = registerSchema.parse(req.body);
 
@@ -52,11 +52,11 @@ router.post('/register', async (req, res, next) => {
 
     res.status(201).json({ accessToken, refreshToken });
   } catch (error) {
-    next(error);
+    _next(error);
   }
 });
 
-router.post('/login', async (req, res, next) => {
+router.post('/login', async (req, res, _next) => {
   try {
     const { email, password } = loginSchema.parse(req.body);
 
@@ -81,11 +81,11 @@ router.post('/login', async (req, res, next) => {
 
     res.json({ accessToken, refreshToken });
   } catch (error) {
-    next(error);
+    _next(error);
   }
 });
 
-router.post('/refresh', async (req, res, next) => {
+router.post('/refresh', async (req, res, _next) => {
   try {
     const { refreshToken } = refreshSchema.parse(req.body);
 
@@ -123,12 +123,12 @@ router.post('/refresh', async (req, res, next) => {
     });
 
     res.json(newTokens);
-  } catch (error) {
+  } catch (_error) {
     res.status(401).json({ error: { message: 'Invalid refresh token' } });
   }
 });
 
-router.post('/logout', requireAuth, async (req: AuthRequest, res, next) => {
+router.post('/logout', requireAuth, async (req: AuthRequest, res, _next) => {
   try {
     const { refreshToken } = req.body;
     if (!refreshToken) {
@@ -151,11 +151,11 @@ router.post('/logout', requireAuth, async (req: AuthRequest, res, next) => {
 
     res.json({ success: true });
   } catch (error) {
-    next(error);
+    _next(error);
   }
 });
 
-router.get('/me', requireAuth, async (req: AuthRequest, res, next) => {
+router.get('/me', requireAuth, async (req: AuthRequest, res, _next) => {
   try {
     const user = await prisma.user.findUnique({
       where: { id: req.user!.userId },
@@ -168,7 +168,7 @@ router.get('/me', requireAuth, async (req: AuthRequest, res, next) => {
 
     res.json(user);
   } catch (error) {
-    next(error);
+    _next(error);
   }
 });
 

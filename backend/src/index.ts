@@ -17,11 +17,12 @@ app.post('/health', (req, res) => {
 app.use('/auth', authRoutes);
 
 // Consistent error handling
-app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
-  console.error(err);
-  res.status(err.status || 500).json({
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+app.use((_err: any, req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  console.error(_err);
+  res.status(_err.status || 500).json({
     error: {
-      message: err.message || 'Internal Server Error',
+      message: _err.message || 'Internal Server Error',
     },
   });
 });
