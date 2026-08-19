@@ -1,8 +1,7 @@
 import React, { useEffect, useRef } from 'react';
-import { Animated, View, StyleSheet } from 'react-native';
+import { Animated, View, StyleSheet, Pressable } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { Text } from './Text';
-import { PremiumPressable } from './PremiumPressable';
 import { theme } from '../../theme';
 
 interface RoleSelectorProps {
@@ -74,10 +73,8 @@ function RoleTile({
   const textColor = selected ? selectedColor : theme.colors.textPrimary;
 
   return (
-    <PremiumPressable
+    <Pressable
       onPress={handlePress}
-      scaleTo={0.95}
-      activeOpacity={0.9}
       style={({ pressed }) => [
         styles.tile,
         selected && {
@@ -89,7 +86,7 @@ function RoleTile({
       ]}
     >
       <Animated.View style={[styles.tileInner, { transform: [{ scale: pop }] }]}>
-        <Feather name={icon} size={24} color={iconColor} />
+        <Feather name={icon} size={22} color={iconColor} />
 
         <Text numberOfLines={1} style={[styles.tileText, { color: textColor }]}>
           {label}
@@ -108,7 +105,7 @@ function RoleTile({
       >
         <Feather name="check" size={11} color={selectedColor} />
       </Animated.View>
-    </PremiumPressable>
+    </Pressable>
   );
 }
 
@@ -144,50 +141,46 @@ export function RoleSelector({ selected, onChange }: RoleSelectorProps) {
 
 const styles = StyleSheet.create({
   container: {
-    marginBottom: 16,
+    marginBottom: 20,
   },
 
   label: {
     marginBottom: 10,
     color: theme.colors.textPrimary,
     fontFamily: 'PlusJakartaSans_600SemiBold',
-    fontSize: 18,
-    lineHeight: 24,
+    fontSize: 16,
+    lineHeight: 21,
   },
 
   row: {
     flexDirection: 'row',
     width: '100%',
     gap: 12,
-    alignItems: 'stretch',
   },
 
   tile: {
     flex: 1,
-    flexGrow: 1,
-    flexShrink: 1,
-    flexBasis: 0,
-    minWidth: 164,
-    minHeight: 140,
+    minHeight: 74,
+    flexShrink: 0,
     borderRadius: 20,
     borderWidth: 1.5,
     borderColor: '#E0E4E2',
-    borderBottomWidth: 6,
+    borderBottomWidth: 5,
     borderBottomColor: '#CCD1D3',
     backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 12,
-    paddingHorizontal: 10,
+    paddingHorizontal: 8,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    elevation: 2,
   },
 
   tilePressed: {
-    borderBottomWidth: 2,
+    borderBottomWidth: 1.5,
   },
 
   tileInner: {
@@ -197,21 +190,21 @@ const styles = StyleSheet.create({
   },
 
   tileText: {
-    marginTop: 8,
+    marginTop: 6,
     fontFamily: 'PlusJakartaSans_700Bold',
-    fontSize: 15,
-    lineHeight: 20,
+    fontSize: 14,
+    lineHeight: 18,
     textAlign: 'center',
   },
 
   checkBadge: {
     position: 'absolute',
-    top: 10,
-    right: 10,
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    borderWidth: 2,
+    top: 8,
+    right: 8,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 1.5,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#FFFFFF',
