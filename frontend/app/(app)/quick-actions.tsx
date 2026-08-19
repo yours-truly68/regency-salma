@@ -1,108 +1,131 @@
-/* eslint-disable @typescript-eslint/no-require-imports */
-import React from 'react';
-import { View, StyleSheet, TouchableOpacity, ScrollView, Image } from 'react-native';
-import { useRouter } from 'expo-router';
+import { PremiumPressable } from '../../src/components/ui/PremiumPressable';
 import { Feather } from '@expo/vector-icons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import React, { useState } from 'react';
+import { View, StyleSheet, ScrollView, Image, Alert } from 'react-native';
+import { useRouter } from 'expo-router';
 import { Text } from '../../src/components/ui/Text';
 import { AnimatedScale } from '../../src/components/ui/AnimatedScale';
-import { AnimatedEntrance } from '../../src/components/ui/AnimatedEntrance';
+import { ScreenEntrance } from '../../src/components/ui/ScreenEntrance';
+import { AddVisitorModal } from '../../src/components/add-visitor-modal';
+import { useScreenInsets } from '../../src/hooks/useScreenInsets';
 import { theme } from '../../src/theme';
 
 export default function QuickActionsScreen() {
   const router = useRouter();
-  const insets = useSafeAreaInsets();
+  const { top, bottomClearance } = useScreenInsets(false);
+  const [showAddModal, setShowAddModal] = useState(false);
+
+  const handleClose = () => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/(app)/home');
+    }
+  };
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} onPress={() => router.back()}>
-          <Feather name="x" size={24} color={theme.colors.textPrimary} />
-        </TouchableOpacity>
-      </View>
+    <View style={styles.container}>
+      <ScrollView
+        contentContainerStyle={[styles.scrollContent, { paddingTop: top, paddingBottom: bottomClearance }]}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Header */}
+        <View style={styles.header}>
+          <PremiumPressable style={styles.closeButton} onPress={handleClose}>
+            <Feather name="x" size={24} color={theme.colors.textPrimary} />
+          </PremiumPressable>
+        </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        
-        <AnimatedEntrance delay={100}>
+        <ScreenEntrance delay={100}>
           <View style={styles.titleContainer}>
-            <Text style={styles.title}>What would you like to do today?</Text>
-            <Text style={styles.subtitle}>Everything you need, one tap away.</Text>
+            <Text style={styles.title}>What would you like{'\n'}to do today?</Text>
+            <Text style={styles.subtitle}>Everything you need,{'\n'}one tap away.</Text>
           </View>
-        </AnimatedEntrance>
+        </ScreenEntrance>
 
         {/* Circular Arrangement */}
         <View style={styles.circleContainer}>
-          {/* Top */}
+          {/* Top: Add Visitor */}
           <AnimatedScale delay={200} style={[styles.actionItem, styles.posTop]}>
-            <TouchableOpacity style={styles.innerItem}>
+            <PremiumPressable style={styles.innerItem} onPress={() => setShowAddModal(true)}>
               <View style={[styles.actionIconArea, { backgroundColor: '#E8F5E9' }]}>
-                <Feather name="user-plus" size={20} color={theme.colors.primary} />
+                <Feather name="user-plus" size={22} color={theme.colors.primary} />
               </View>
               <Text style={styles.actionLabel}>Add Visitor</Text>
-            </TouchableOpacity>
+            </PremiumPressable>
           </AnimatedScale>
 
-          {/* Left */}
+          {/* Left: Raise Issue */}
           <AnimatedScale delay={250} style={[styles.actionItem, styles.posLeft]}>
-            <TouchableOpacity style={styles.innerItem}>
+            <PremiumPressable style={styles.innerItem} onPress={() => router.push('/services/maintenance')}>
               <View style={[styles.actionIconArea, { backgroundColor: '#FBE9E7' }]}>
-                <Feather name="settings" size={20} color="#8B4513" />
+                <Feather name="settings" size={22} color="#8B4513" />
               </View>
               <Text style={styles.actionLabel}>Raise Issue</Text>
-            </TouchableOpacity>
+            </PremiumPressable>
           </AnimatedScale>
 
           {/* Center */}
           <AnimatedScale delay={150}>
-            <TouchableOpacity style={styles.centerButton} onPress={() => router.back()}>
-              <Feather name="grid" size={28} color="#FFF" />
-            </TouchableOpacity>
+            <PremiumPressable style={styles.centerButton} onPress={handleClose}>
+              <View style={styles.dotsGrid}>
+                <View style={styles.dot} />
+                <View style={styles.dot} />
+                <View style={styles.dot} />
+                <View style={styles.dot} />
+              </View>
+            </PremiumPressable>
           </AnimatedScale>
 
-          {/* Right */}
+          {/* Right: Delivery Pass */}
           <AnimatedScale delay={300} style={[styles.actionItem, styles.posRight]}>
-            <TouchableOpacity style={styles.innerItem}>
+            <PremiumPressable style={styles.innerItem} onPress={() => router.push('/visitors')}>
               <View style={[styles.actionIconArea, { backgroundColor: '#FFF3E0' }]}>
-                <Feather name="box" size={20} color={theme.colors.accent} />
+                <Feather name="box" size={22} color={theme.colors.accent} />
               </View>
               <Text style={styles.actionLabel}>Delivery Pass</Text>
-            </TouchableOpacity>
+            </PremiumPressable>
           </AnimatedScale>
 
-          {/* Bottom */}
+          {/* Bottom: Emergency */}
           <AnimatedScale delay={350} style={[styles.actionItem, styles.posBottom]}>
-            <TouchableOpacity style={styles.innerItem}>
+            <PremiumPressable style={styles.innerItem} onPress={() => Alert.alert('Emergency Alert', 'Security and emergency contacts have been notified.')}>
               <View style={[styles.actionIconArea, { backgroundColor: '#FFEBEE' }]}>
-                <Feather name="alert-triangle" size={20} color={theme.colors.error} />
+                <Feather name="alert-triangle" size={22} color={theme.colors.error} />
               </View>
               <Text style={styles.actionLabel}>Emergency</Text>
-            </TouchableOpacity>
+            </PremiumPressable>
           </AnimatedScale>
         </View>
 
-        <View style={{ flex: 1 }} />
+        <View style={{ flex: 1, minHeight: 32 }} />
 
         {/* Community Event Card */}
-        <AnimatedEntrance delay={450}>
+        <ScreenEntrance delay={450}>
           <View style={styles.eventCard}>
             <View style={styles.eventContent}>
               <Text style={styles.eventTitle}>Community dinner this Sunday! 🎉</Text>
               <Text style={styles.eventDesc}>Join us for a fun evening at the Club House.</Text>
-              <TouchableOpacity style={styles.eventLink} onPress={() => {}}>
+              <PremiumPressable style={styles.eventLink} onPress={() => router.push('/calendar')}>
                 <Text style={styles.eventLinkText}>View details</Text>
-                <Feather name="arrow-right" size={14} color={theme.colors.accent} style={{marginLeft: 4}} />
-              </TouchableOpacity>
+                <Feather name="arrow-right" size={14} color={theme.colors.accent} style={{ marginLeft: 4 }} />
+              </PremiumPressable>
             </View>
-            <Image 
-              source={require('../../assets/community-event-illustration.jpg')} 
+            <Image
+              // eslint-disable-next-line @typescript-eslint/no-require-imports
+              source={require('../../assets/community-event-illustration.jpg')}
               style={styles.eventImage}
               resizeMode="cover"
             />
           </View>
-        </AnimatedEntrance>
 
+          <View style={styles.footerNoteContainer}>
+            <Text style={styles.footerNoteText}>You can always customize your quick actions{'\n'}from your profile settings.</Text>
+          </View>
+        </ScreenEntrance>
       </ScrollView>
+
+      <AddVisitorModal visible={showAddModal} onClose={() => setShowAddModal(false)} />
     </View>
   );
 }
@@ -112,126 +135,177 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: theme.colors.background,
   },
-  header: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    flexDirection: 'row',
-  },
   scrollContent: {
     flexGrow: 1,
-    paddingHorizontal: 16,
-    paddingBottom: 40,
+    paddingHorizontal: 20,
+  },
+  header: {
+    paddingVertical: 16,
+    flexDirection: 'row',
+  },
+  closeButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.05)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
   },
   titleContainer: {
-    marginTop: 24,
-    marginBottom: 48,
+    marginTop: 12,
+    marginBottom: 36,
     alignItems: 'center',
   },
   title: {
     fontFamily: 'PlusJakartaSans_700Bold',
-    fontSize: 24,
+    fontSize: 28,
     color: theme.colors.textPrimary,
     textAlign: 'center',
     marginBottom: 8,
+    lineHeight: 36,
+    letterSpacing: -0.6,
   },
   subtitle: {
     fontFamily: 'PlusJakartaSans_400Regular',
     fontSize: 16,
     color: theme.colors.textSecondary,
     textAlign: 'center',
+    lineHeight: 22,
   },
   circleContainer: {
-    height: 300,
+    height: 320,
     position: 'relative',
     alignItems: 'center',
     justifyContent: 'center',
     alignSelf: 'center',
     width: '100%',
-    marginBottom: 40,
+    maxWidth: 340,
   },
   centerButton: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
+    width: 76,
+    height: 76,
+    borderRadius: 38,
     backgroundColor: theme.colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: theme.colors.primary,
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.3,
-    shadowRadius: 12,
+    shadowRadius: 16,
     elevation: 10,
     zIndex: 10,
+  },
+  dotsGrid: {
+    width: 24,
+    height: 24,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    alignContent: 'space-between',
+  },
+  dot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#FFFFFF',
   },
   actionItem: {
     position: 'absolute',
     alignItems: 'center',
-    width: 80,
+    width: 100,
   },
   innerItem: {
     alignItems: 'center',
   },
   actionIconArea: {
-    width: 56,
-    height: 56,
-    borderRadius: 16,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 10,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.05,
+    shadowOpacity: 0.06,
     shadowRadius: 8,
-    elevation: 4,
+    elevation: 3,
   },
   actionLabel: {
     fontFamily: 'PlusJakartaSans_600SemiBold',
-    fontSize: 12,
+    fontSize: 13,
     color: theme.colors.textPrimary,
     textAlign: 'center',
   },
   posTop: { top: 0 },
   posBottom: { bottom: 0 },
-  posLeft: { left: '10%' },
-  posRight: { right: '10%' },
+  posLeft: { left: 0 },
+  posRight: { right: 0 },
   eventCard: {
     flexDirection: 'row',
-    padding: 16,
-    borderRadius: 16,
-    backgroundColor: '#FDFBF7', 
+    padding: 18,
+    borderRadius: 20,
+    backgroundColor: '#FBF5ED',
     borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.05)',
+    borderColor: 'rgba(210, 125, 103, 0.12)',
     alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.04,
+    shadowRadius: 10,
+    elevation: 2,
+    marginBottom: 18,
   },
   eventContent: {
     flex: 1,
-    paddingRight: 12,
+    paddingRight: 16,
   },
   eventTitle: {
     fontFamily: 'PlusJakartaSans_700Bold',
     fontSize: 16,
-    color: theme.colors.textPrimary,
-    marginBottom: 6,
+    letterSpacing: -0.3,
+    color: '#2A1810',
+    marginBottom: 4,
   },
   eventDesc: {
     fontFamily: 'PlusJakartaSans_400Regular',
-    fontSize: 14,
-    color: theme.colors.textSecondary,
-    marginBottom: 12,
-    lineHeight: 20,
+    fontSize: 13,
+    color: '#736154',
+    marginBottom: 10,
+    lineHeight: 18,
   },
   eventLink: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   eventLinkText: {
-    fontFamily: 'PlusJakartaSans_600SemiBold',
-    fontSize: 14,
+    fontFamily: 'PlusJakartaSans_700Bold',
+    fontSize: 13,
     color: theme.colors.accent,
   },
   eventImage: {
     width: 80,
     height: 80,
-    borderRadius: 12,
+    borderRadius: 14,
+  },
+  footerNoteContainer: {
+    backgroundColor: 'rgba(0,0,0,0.02)',
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    borderRadius: 16,
+    alignItems: 'center',
+  },
+  footerNoteText: {
+    fontFamily: 'PlusJakartaSans_400Regular',
+    fontSize: 13,
+    color: theme.colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 19,
   },
 });

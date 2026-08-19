@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
-import { View, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
-import { useRouter } from 'expo-router';
+import { PremiumPressable } from '../../src/components/ui/PremiumPressable';
 import { Feather } from '@expo/vector-icons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import React, { useState } from 'react';
+import { View, StyleSheet, ScrollView } from 'react-native';
 import { Text } from '../../src/components/ui/Text';
-import { AnimatedEntrance } from '../../src/components/ui/AnimatedEntrance';
+import { ScreenEntrance } from '../../src/components/ui/ScreenEntrance';
+import { AppHeader } from '../../src/components/ui/AppHeader';
+import { useScreenInsets } from '../../src/hooks/useScreenInsets';
 import { theme } from '../../src/theme';
 
 const FEED_FIXTURES = [
@@ -13,23 +14,16 @@ const FEED_FIXTURES = [
 ];
 
 export default function CommunityScreen() {
-  const router = useRouter();
-  const insets = useSafeAreaInsets();
+  const { bottomClearance } = useScreenInsets(true);
   const [activeTab, setActiveTab] = useState('feed');
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
-      <View style={styles.header}>
-        <TouchableOpacity hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} onPress={() => router.back()}>
-          <Feather name="arrow-left" size={24} color={theme.colors.textPrimary} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Community</Text>
-        <View style={{ width: 24 }} />
-      </View>
+    <View style={styles.container}>
+      <AppHeader variant="tabroot" title="Community" />
 
       <View style={styles.tabs}>
         {['feed', 'polls', 'events', 'gallery'].map((tab) => (
-          <TouchableOpacity 
+          <PremiumPressable
             key={tab}
             style={[styles.tab, activeTab === tab && styles.tabActive]}
             onPress={() => setActiveTab(tab)}
@@ -37,13 +31,13 @@ export default function CommunityScreen() {
             <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>
               {tab.charAt(0).toUpperCase() + tab.slice(1)}
             </Text>
-          </TouchableOpacity>
+          </PremiumPressable>
         ))}
       </View>
 
       <ScrollView contentContainerStyle={styles.feed}>
         {FEED_FIXTURES.map((post, index) => (
-          <AnimatedEntrance key={post.id} delay={100 + index * 100}>
+          <ScreenEntrance key={post.id} delay={100 + index * 100}>
             <View style={styles.feedCard}>
               {post.pinned && (
                 <View style={styles.pinnedBadge}>
@@ -61,19 +55,19 @@ export default function CommunityScreen() {
                 </View>
               </View>
               <Text style={styles.content}>{post.content}</Text>
-              
+
               <View style={styles.actions}>
-                <TouchableOpacity style={styles.actionBtn}>
+                <PremiumPressable style={styles.actionBtn}>
                   <Feather name="heart" size={16} color={theme.colors.textSecondary} />
                   <Text style={styles.actionText}>{post.likes}</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.actionBtn}>
+                </PremiumPressable>
+                <PremiumPressable style={styles.actionBtn}>
                   <Feather name="message-square" size={16} color={theme.colors.textSecondary} />
                   <Text style={styles.actionText}>{post.comments}</Text>
-                </TouchableOpacity>
+                </PremiumPressable>
               </View>
             </View>
-          </AnimatedEntrance>
+          </ScreenEntrance>
         ))}
       </ScrollView>
     </View>
@@ -85,26 +79,14 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: theme.colors.background,
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  headerTitle: {
-    fontFamily: 'PlusJakartaSans_700Bold',
-    fontSize: 18,
-    color: theme.colors.textPrimary,
-  },
   tabs: {
     flexDirection: 'row',
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.border,
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
   },
   tab: {
-    paddingVertical: 12,
+    paddingVertical: 14,
     marginRight: 24,
     borderBottomWidth: 2,
     borderBottomColor: 'transparent',
@@ -114,82 +96,98 @@ const styles = StyleSheet.create({
   },
   tabText: {
     fontFamily: 'PlusJakartaSans_600SemiBold',
-    fontSize: 14,
+    fontSize: 15,
     color: theme.colors.textSecondary,
   },
   tabTextActive: {
     color: theme.colors.primary,
   },
   feed: {
-    padding: 16,
+    padding: 20,
+    paddingBottom: 100,
   },
   feedCard: {
-    backgroundColor: '#FDFBF7', // warm card surface
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: theme.colors.border,
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 16,
+    borderColor: 'rgba(0,0,0,0.04)',
+    borderRadius: 18,
+    padding: 20,
+    marginBottom: 18,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.04,
+    shadowRadius: 12,
+    elevation: 2,
   },
   pinnedBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 14,
+    backgroundColor: '#FFF7ED',
+    alignSelf: 'flex-start',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 100,
   },
   pinnedText: {
     fontFamily: 'PlusJakartaSans_600SemiBold',
-    fontSize: 11,
+    fontSize: 12,
     color: theme.colors.accent,
-    marginLeft: 4,
+    marginLeft: 6,
   },
   postHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 14,
   },
   avatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(0,0,0,0.05)',
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: theme.colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 10,
+    marginRight: 12,
   },
   avatarText: {
     fontFamily: 'PlusJakartaSans_700Bold',
-    fontSize: 14,
-    color: theme.colors.textPrimary,
+    fontSize: 16,
+    color: '#FFFFFF',
   },
   author: {
-    fontFamily: 'PlusJakartaSans_600SemiBold',
-    fontSize: 14,
+    fontFamily: 'PlusJakartaSans_700Bold',
+    fontSize: 15,
     color: theme.colors.textPrimary,
   },
   time: {
-    fontFamily: 'PlusJakartaSans_500Medium',
-    fontSize: 12,
+    fontFamily: 'PlusJakartaSans_400Regular',
+    fontSize: 13,
     color: theme.colors.textSecondary,
+    marginTop: 2,
   },
   content: {
     fontFamily: 'PlusJakartaSans_400Regular',
-    fontSize: 14,
+    fontSize: 15,
     color: theme.colors.textPrimary,
-    lineHeight: 22,
-    marginBottom: 16,
+    lineHeight: 23,
+    marginBottom: 18,
   },
   actions: {
     flexDirection: 'row',
     gap: 24,
+    paddingTop: 6,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0,0,0,0.04)',
   },
   actionBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
+    paddingVertical: 4,
   },
   actionText: {
-    fontFamily: 'PlusJakartaSans_500Medium',
-    fontSize: 13,
+    fontFamily: 'PlusJakartaSans_600SemiBold',
+    fontSize: 14,
     color: theme.colors.textSecondary,
   }
 });
