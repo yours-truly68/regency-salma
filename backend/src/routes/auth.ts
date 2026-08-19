@@ -1,16 +1,27 @@
 import { Router } from 'express';
 import bcrypt from 'bcrypt';
 import { z } from 'zod';
-import { PrismaClient } from '@prisma/client';
+import { Pool } from 'pg';
+import { PrismaPg } from '@prisma/adapter-pg';
+import { PrismaClient, Role } from '@prisma/client';
 import { generateTokens, verifyRefreshToken } from '../utils/jwt';
 import { requireAuth, AuthRequest } from '../middleware/auth';
 
 const router = Router();
-const prisma = new PrismaClient();
+
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/regency',
+});
+const adapter = new PrismaPg(pool);
+const prisma = new PrismaClient({ adapter });
 
 const registerSchema = z.object({
   email: z.string().email(),
-  password: z.string().min(8),
+  password: z.string().min(6),
+  fullName: z.string().optional(),
+  floor: z.string().optional(),
+  room: z.string().optional(),
+  role: z.string().optional(),
 });
 
 const loginSchema = z.object({
@@ -24,7 +35,7 @@ const refreshSchema = z.object({
 
 router.post('/register', async (req, res, _next) => {
   try {
-    const { email, password } = registerSchema.parse(req.body);
+    const { email, password, fullName, floor, room, role } = registerSchema.parse(req.body);
 
     const existingUser = await prisma.user.findUnique({ where: { email } });
     if (existingUser) {
@@ -32,8 +43,18 @@ router.post('/register', async (req, res, _next) => {
     }
 
     const passwordHash = await bcrypt.hash(password, 10);
+    const unitNumber: string = (floor && room ? `${floor}${room}` : '9A') || '9A';
+    const firstName: string = (fullName ? fullName.trim().split(' ')[0] : 'Resident') || 'Resident';
+    const userRole = role === 'tenant' ? Role.TENANT : Role.OWNER;
+
     const user = await prisma.user.create({
-      data: { email, passwordHash },
+      data: {
+        email,
+        passwordHash,
+        firstName,
+        unitNumber,
+        role: userRole,
+      },
     });
 
     const { accessToken, refreshToken } = generateTokens(user.id);
@@ -50,7 +71,17 @@ router.post('/register', async (req, res, _next) => {
       },
     });
 
-    res.status(201).json({ accessToken, refreshToken });
+    res.status(201).json({
+      accessToken,
+      refreshToken,
+      user: {
+        id: user.id,
+        email: user.email,
+        firstName: user.firstName,
+        unitNumber: user.unitNumber,
+        role: user.role,
+      },
+    });
   } catch (error) {
     _next(error);
   }
@@ -79,7 +110,17 @@ router.post('/login', async (req, res, _next) => {
       },
     });
 
-    res.json({ accessToken, refreshToken });
+    res.json({
+      accessToken,
+      refreshToken,
+      user: {
+        id: user.id,
+        email: user.email,
+        firstName: user.firstName || 'Resident',
+        unitNumber: user.unitNumber || '9A',
+        role: user.role,
+      },
+    });
   } catch (error) {
     _next(error);
   }
@@ -131,22 +172,15 @@ router.post('/refresh', async (req, res, _next) => {
 router.post('/logout', requireAuth, async (req: AuthRequest, res, _next) => {
   try {
     const { refreshToken } = req.body;
-    if (!refreshToken) {
-      return res.status(400).json({ error: { message: 'Refresh token required for full logout' } });
-    }
-
-    const sessions = await prisma.session.findMany({ where: { userId: req.user!.userId } });
-    let targetSessionId = null;
-
-    for (const session of sessions) {
-      if (await bcrypt.compare(refreshToken, session.refreshToken)) {
-        targetSessionId = session.id;
-        break;
+    if (refreshToken) {
+      const sessions = await prisma.session.findMany({ where: { userId: req.user!.userId } });
+      for (const session of sessions) {
+        if (await bcrypt.compare(refreshToken, session.refreshToken)) {
+          await prisma.session.delete({ where: { id: session.id } }).catch(() => {});
+        }
       }
-    }
-
-    if (targetSessionId) {
-      await prisma.session.delete({ where: { id: targetSessionId } });
+    } else {
+      await prisma.session.deleteMany({ where: { userId: req.user!.userId } });
     }
 
     res.json({ success: true });
@@ -159,7 +193,15 @@ router.get('/me', requireAuth, async (req: AuthRequest, res, _next) => {
   try {
     const user = await prisma.user.findUnique({
       where: { id: req.user!.userId },
-      select: { id: true, email: true, createdAt: true, memberships: { include: { community: true } } },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        unitNumber: true,
+        role: true,
+        createdAt: true,
+        memberships: { include: { community: true } },
+      },
     });
 
     if (!user) {

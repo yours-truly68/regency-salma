@@ -1,9 +1,15 @@
 import supertest from 'supertest';
 import app from '../src/index';
+import { Pool } from 'pg';
+import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcrypt';
 
-const prisma = new PrismaClient();
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/regency',
+});
+const adapter = new PrismaPg(pool);
+const prisma = new PrismaClient({ adapter });
 const request = supertest(app);
 
 describe('Auth Endpoints', () => {
@@ -14,6 +20,7 @@ describe('Auth Endpoints', () => {
 
   afterAll(async () => {
     await prisma.$disconnect();
+    await pool.end();
   });
 
   let accessToken: string;
