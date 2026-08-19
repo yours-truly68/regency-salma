@@ -1,205 +1,334 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
-import React, { useRef } from 'react';
-import { View, StyleSheet, ScrollView, TouchableOpacity, Image, Animated } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { View, StyleSheet, ScrollView, Image, Platform, UIManager, Animated, useWindowDimensions } from 'react-native';
+import { useRouter } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text } from '../../src/components/ui/Text';
-import { Card } from '../../src/components/ui/Card';
-import { AnimatedEntrance } from '../../src/components/ui/AnimatedEntrance';
+import { PremiumPressable } from '../../src/components/ui/PremiumPressable';
+import { ScreenEntrance } from '../../src/components/ui/ScreenEntrance';
+import { QuickActionsEditorModal, QuickActionItem } from '../../src/components/quick-actions-editor-modal';
+import { VisitorApprovalCard, VisitorApproval } from '../../src/components/visitor-approval-card';
+import { AddVisitorModal } from '../../src/components/add-visitor-modal';
+import { useOpenIssues, removeIssue, ISSUE_CATEGORIES } from '../../src/store/issues';
+import { useCalendarEvents } from '../../src/store/calendar-events';
+import { useAvailability, setAvailability } from '../../src/store/availability';
 import { theme } from '../../src/theme';
+import { useSession } from '../../src/store/auth';
+import { AppHeader } from '../../src/components/ui/AppHeader';
+import { useScreenInsets } from '../../src/hooks/useScreenInsets';
+import { EmptyState } from '../../src/components/ui/EmptyState';
 
-// Fixture Data
-const RESIDENT_FIXTURE = { name: 'Rohan', unit: '9A', role: 'Resident' };
-const VISITOR_FIXTURE = { name: 'Rahul Sharma', time: 'Today · 6:30 PM', type: 'Personal Visitor' };
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 
 export default function HomeScreen() {
-  const insets = useSafeAreaInsets();
-  const imageOpacity = useRef(new Animated.Value(0)).current;
+  const router = useRouter();
+  const { bottomClearance } = useScreenInsets(true);
+  const { user } = useSession() || {};
+  const displayName = user?.firstName || 'Resident';
+  const unitNumber = user?.unitNumber || '';
 
-  const handleImageLoad = () => {
-    Animated.timing(imageOpacity, {
+  const [isQuickActionsVisible, setIsQuickActionsVisible] = useState(false);
+  const [isAddVisitorVisible, setIsAddVisitorVisible] = useState(false);
+  const isAway = useAvailability();
+  const [gateVisitor, setGateVisitor] = useState<VisitorApproval | null>(null);
+  const [quickActions, setQuickActions] = useState<QuickActionItem[]>([
+    { id: '1', icon: 'user', label: 'Add Visitor', bgColor: '#E8F5E9', iconColor: theme.colors.primary, visible: true },
+    { id: '2', icon: 'package', label: 'Delivery Pass', bgColor: '#FFF3E0', iconColor: '#E65100', visible: true },
+    { id: '3', icon: 'tool', label: 'Raise Issue', bgColor: '#FBE9E7', iconColor: '#8B4513', visible: true },
+    { id: '4', icon: 'alert-circle', label: 'Emergency', bgColor: '#FFEBEE', iconColor: '#C62828', visible: true }
+  ]);
+
+  const openIssues = useOpenIssues();
+  const calendarEvents = useCalendarEvents();
+
+  const todayStr = (() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  })();
+
+  const nextEvent = calendarEvents
+    .filter((e) => e.date >= todayStr)
+    .sort((a, b) => a.date.localeCompare(b.date))[0];
+
+  const eventDateLabel = (() => {
+    if (!nextEvent) return '';
+    try {
+      return new Date(`${nextEvent.date}T00:00:00`).toLocaleDateString('en-US', {
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric',
+      });
+    } catch {
+      return '';
+    }
+  })();
+
+  const statCards = [
+    { label: 'Visitors', value: '0', route: '/visitors' as const },
+    { label: 'Deliveries', value: '0', route: '/visitors' as const },
+    { label: 'Maintenance', value: String(openIssues.length).padStart(2, '0'), route: '/services/maintenance' as const },
+    { label: 'Staff', value: '0', route: '/services/staff-attendance' as const },
+  ];
+
+  const greeting = (() => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good morning,';
+    if (hour < 17) return 'Good afternoon,';
+    if (hour < 21) return 'Good evening,';
+    return 'Good night,';
+  })();
+
+  const { height: windowHeight } = useWindowDimensions();
+  const bgFade = useRef(new Animated.Value(0)).current;
+  const bgParallax = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.timing(bgFade, {
       toValue: 1,
-      duration: 500,
+      duration: 700,
       useNativeDriver: true,
     }).start();
-  };
+  }, [bgFade]);
+
+  const onScroll = Animated.event(
+    [{ nativeEvent: { contentOffset: { y: bgParallax } } }],
+    { useNativeDriver: true },
+  );
+
+  const bgTranslate = Animated.multiply(bgParallax, -0.35);
 
   return (
     <View style={styles.container}>
-      <ScrollView contentContainerStyle={{ paddingBottom: insets.bottom + 80 }} showsVerticalScrollIndicator={false}>
-        
-        {/* Integrated Hero Section */}
-        <View style={styles.heroContainer}>
-          <Animated.Image 
-            source={require('../../assets/home-residential-hero.png')} 
-            style={[styles.heroImageAbsolute, { opacity: imageOpacity }]}
-            resizeMode="cover"
-            onLoad={handleImageLoad}
-          />
-          {/* Light overlay to ensure text/header readability over complex image */}
-          <View style={styles.heroOverlay}>
-            
-            <View style={[styles.header, { paddingTop: Math.max(insets.top, 12) }]}>
-              {/* Empty view to perfectly center the logo against the right-side controls */}
-              <View style={{ width: 72 }} />
-              
-              <Image 
-                source={require('../../assets/regency-salma-typographic-logo.png')} 
-                style={styles.logoImage} 
-                resizeMode="contain" 
-              />
+      <Animated.View
+        style={[styles.bgWrapper, { opacity: bgFade, transform: [{ translateY: bgTranslate }] }]}
+        pointerEvents="none"
+      >
+        <Image
+          source={require('../../assets/home-residential-hero.png')}
+          style={[styles.bgImage, { height: windowHeight + 200 }]}
+          resizeMode="cover"
+        />
+        <View style={styles.bgOverlay} />
+      </Animated.View>
 
-              <View style={styles.headerRight}>
-                <TouchableOpacity style={styles.bellIcon} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-                  <Feather name="bell" size={24} color={theme.colors.textPrimary} />
-                  <View style={styles.unreadDot} />
-                </TouchableOpacity>
-                <View style={styles.avatarPlaceholder}>
-                  <Text style={styles.avatarText}>{RESIDENT_FIXTURE.name.charAt(0)}</Text>
-                </View>
-              </View>
-            </View>
+      <AppHeader variant="home" firstName={displayName} />
 
+      <ScrollView
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: bottomClearance }]}
+        showsVerticalScrollIndicator={false}
+        onScroll={onScroll}
+        scrollEventThrottle={16}
+      >
+        <View style={styles.headerSection}>
+          {/* 2. Greeting & Resident Identity */}
+          <ScreenEntrance delay={50}>
             <View style={styles.greetingContainer}>
-              <Text style={styles.greetingText}>Good evening,</Text>
+              <Text style={styles.greetingText}>{greeting}</Text>
+
               <View style={styles.nameRow}>
-                <Text style={styles.nameText}>{RESIDENT_FIXTURE.name}</Text>
-                <Text style={styles.waveEmoji}>👋</Text>
-              </View>
-              <View style={styles.unitChip}>
-                <Text style={styles.unitChipText}>{RESIDENT_FIXTURE.unit} · My Home</Text>
+                <View style={styles.nameLeft}>
+                  <Text style={styles.nameText}>{displayName}</Text>
+                  <Text style={styles.waveEmoji}>👋</Text>
+                </View>
+
+                {/* 3. Property Context */}
+                <PremiumPressable onPress={() => router.push('/my-home')} style={styles.unitChip}>
+                  <Text style={styles.unitChipText}>{unitNumber} · My Home</Text>
+                </PremiumPressable>
               </View>
             </View>
+          </ScreenEntrance>
+        </View>
 
+        {/* 4. Residential Hero Image — HIDDEN (temporarily disabled, not deleted) */}
+        <View style={styles.heroWrapperHidden}>
+          <View style={styles.heroImageContainerHidden}>
+            <Image
+              source={require('../../assets/hero-image.png')}
+              style={styles.heroImage}
+              resizeMode="cover"
+            />
+            <PremiumPressable
+              style={[styles.availabilityBadge, isAway && styles.availabilityBadgeAway, styles.availabilityBadgeOnImage]}
+              activeOpacity={0.85}
+              accessibilityRole="switch"
+              accessibilityState={{ checked: !isAway }}
+              accessibilityLabel={isAway ? 'Set status to At Home' : 'Set status to Away'}
+              onPress={() => setAvailability(!isAway)}
+            >
+              <View style={[styles.availabilityDot, isAway && styles.availabilityDotAway]} />
+              <Text style={[styles.availabilityText, isAway && styles.availabilityTextAway]}>
+                {isAway ? 'Away' : 'At Home'}
+              </Text>
+            </PremiumPressable>
           </View>
         </View>
 
-        <View style={styles.contentWrapper}>
-          
-          {/* Compact Visitor Card */}
-          <AnimatedEntrance delay={200}>
-            <View style={styles.visitorCard}>
-              <View style={styles.visitorHeader}>
-                <View style={styles.visitorInfo}>
-                  <Text style={styles.visitorName}>{VISITOR_FIXTURE.name} is arriving</Text>
-                  <Text style={styles.visitorDetails}>{VISITOR_FIXTURE.time} · {VISITOR_FIXTURE.type}</Text>
-                </View>
-                <View style={styles.visitorAvatarPlaceholder}>
-                  <Text style={styles.visitorAvatarText}>{VISITOR_FIXTURE.name.charAt(0)}</Text>
-                </View>
-              </View>
-              <View style={styles.visitorActions}>
-                <TouchableOpacity style={styles.visitorBtnOutline} onPress={() => {}}>
-                  <Text style={styles.visitorBtnOutlineText}>View details</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.visitorBtnSolid} onPress={() => {}}>
-                  <Text style={styles.visitorBtnSolidText}>Approve</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </AnimatedEntrance>
-
-          {/* Today at a glance */}
-          <AnimatedEntrance delay={300}>
+        <View style={styles.mainContent}>
+          {/* 5. Today at a glance */}
+          <ScreenEntrance delay={100}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Today at a glance</Text>
-              <TouchableOpacity hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+              <PremiumPressable hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} onPress={() => router.push('/activity-overview')}>
                 <Text style={styles.sectionLink}>View all</Text>
-              </TouchableOpacity>
+              </PremiumPressable>
             </View>
-            
-            <View style={styles.statsRow}>
-              <Card style={styles.statCard}>
-                <View style={styles.statIconWrapper}>
-                  <Feather name="user" size={14} color={theme.colors.primary} />
-                  <Text style={styles.statNumber}>03</Text>
-                </View>
-                <Text style={styles.statLabel}>Visitors</Text>
-              </Card>
-              <Card style={styles.statCard}>
-                <View style={styles.statIconWrapper}>
-                  <Feather name="package" size={14} color={theme.colors.accent} />
-                  <Text style={styles.statNumber}>01</Text>
-                </View>
-                <Text style={styles.statLabel}>Deliveries</Text>
-              </Card>
-              <Card style={styles.statCard}>
-                <View style={styles.statIconWrapper}>
-                  <Feather name="tool" size={14} color="#8B4513" />
-                  <Text style={styles.statNumber}>02</Text>
-                </View>
-                <Text style={styles.statLabel}>Issues</Text>
-              </Card>
-              <Card style={styles.statCard}>
-                <View style={styles.statIconWrapper}>
-                  <Feather name="users" size={14} color={theme.colors.primary} />
-                  <Text style={styles.statNumber}>07</Text>
-                </View>
-                <Text style={styles.statLabel}>Staff</Text>
-              </Card>
-            </View>
-          </AnimatedEntrance>
 
-          {/* Quick actions (Compact Cards) */}
-          <AnimatedEntrance delay={400}>
+            {/* 6. Glance grid */}
+            <View style={styles.glanceGrid}>
+              {statCards.map((stat) => (
+                <PremiumPressable
+                  key={stat.label}
+                  style={({ pressed }) => [styles.glanceCard, pressed && styles.glanceCardPressed]}
+                  activeOpacity={0.9}
+                  scaleTo={0.95}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${stat.label}: ${stat.value}`}
+                  onPress={() => router.push(stat.route)}
+                >
+                  <Text style={styles.glanceValue}>{stat.value}</Text>
+                  <Text style={styles.glanceLabel} numberOfLines={1}>{stat.label}</Text>
+                </PremiumPressable>
+              ))}
+            </View>
+          </ScreenEntrance>
+
+          {/* 4b. Gate requests */}
+          <ScreenEntrance delay={130}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Gate requests</Text>
+              <PremiumPressable hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} onPress={() => router.push('/visitors')}>
+                <Text style={styles.sectionLink}>View all</Text>
+              </PremiumPressable>
+            </View>
+            {gateVisitor ? (
+              <VisitorApprovalCard visitor={gateVisitor} onDelete={() => setGateVisitor(null)} />
+            ) : (
+              <View style={styles.gateEmptyCard}>
+                <View style={styles.gateEmptyIcon}>
+                  <Feather name="shield" size={20} color={theme.colors.success} />
+                </View>
+                <View style={styles.gateEmptyTextWrap}>
+                  <Text style={styles.gateEmptyTitle}>No gate requests</Text>
+                  <Text style={styles.gateEmptyDesc}>You're all clear — no one is waiting at the gate.</Text>
+                </View>
+              </View>
+            )}
+          </ScreenEntrance>
+
+          {/* 5. Quick Actions */}
+          <ScreenEntrance delay={150}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Quick actions</Text>
-              <TouchableOpacity hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+              <PremiumPressable hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} onPress={() => setIsQuickActionsVisible(true)}>
                 <Text style={styles.sectionLink}>Edit</Text>
-              </TouchableOpacity>
+              </PremiumPressable>
             </View>
-            
-            <View style={styles.actionsRow}>
-              <TouchableOpacity style={styles.actionCard} onPress={() => {}}>
-                <View style={[styles.actionIconContainer, { backgroundColor: '#E8F5E9' }]}>
-                  <Feather name="user-plus" size={16} color={theme.colors.primary} />
-                </View>
-                <Text style={styles.actionLabel}>Add Visitor</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity style={styles.actionCard} onPress={() => {}}>
-                <View style={[styles.actionIconContainer, { backgroundColor: '#FFF3E0' }]}>
-                  <Feather name="box" size={16} color={theme.colors.accent} />
-                </View>
-                <Text style={styles.actionLabel}>Delivery Pass</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity style={styles.actionCard} onPress={() => {}}>
-                <View style={[styles.actionIconContainer, { backgroundColor: '#FBE9E7' }]}>
-                  <Feather name="settings" size={16} color="#8B4513" />
-                </View>
-                <Text style={styles.actionLabel}>Raise Issue</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity style={styles.actionCard} onPress={() => {}}>
-                <View style={[styles.actionIconContainer, { backgroundColor: '#FFEBEE' }]}>
-                  <Feather name="alert-triangle" size={16} color={theme.colors.error} />
-                </View>
-                <Text style={styles.actionLabel}>Emergency</Text>
-              </TouchableOpacity>
-            </View>
-          </AnimatedEntrance>
 
-          {/* Compact Community Event card */}
-          <AnimatedEntrance delay={500}>
+            <View style={styles.actionsRow}>
+              {quickActions.filter((a) => a.visible).slice(0, 4).map((action) => {
+                const getActionRoute = (id: string) => {
+                  if (id === '2') return '/visitors' as const;
+                  if (id === '3') return '/services/raise-issue' as const;
+                  return '/quick-actions' as const;
+                };
+                return (
+                  <View key={action.id} style={styles.actionItem}>
+                    <PremiumPressable style={styles.actionCircle} onPress={() => {
+                      if (action.id === '1') {
+                        setIsAddVisitorVisible(true);
+                      } else {
+                        router.push(getActionRoute(action.id));
+                      }
+                    }}>
+                      <View style={[styles.actionIconContainer, { backgroundColor: action.bgColor }]}>
+                        <Feather name={action.icon as React.ComponentProps<typeof Feather>['name']} size={28} color={action.iconColor} />
+                      </View>
+                    </PremiumPressable>
+                    <Text style={styles.actionLabel}>{action.label}</Text>
+                  </View>
+                );
+              })}
+            </View>
+          </ScreenEntrance>
+
+          {/* 6. Current issues */}
+          <ScreenEntrance delay={180}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Current issues</Text>
+              <PremiumPressable hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} onPress={() => router.push('/services/maintenance')}>
+                <Text style={styles.sectionLink}>View all</Text>
+              </PremiumPressable>
+            </View>
+            {openIssues.length > 0 ? (
+              openIssues.map((issue) => {
+                const meta = ISSUE_CATEGORIES.find((c) => c.id === issue.category);
+                const chipBg = meta?.bg ?? '#E8F5E9';
+                const chipColor = meta?.color ?? theme.colors.primary;
+                return (
+                  <View key={issue.id} style={styles.issueCard}>
+                    <View style={[styles.issueIcon, { backgroundColor: chipBg }]}>
+                      <Feather name={issue.icon} size={20} color={chipColor} />
+                    </View>
+                    <View style={styles.issueInfo}>
+                      <Text style={styles.issueTitle} numberOfLines={1}>{issue.title}</Text>
+                      <Text style={styles.issueMeta}>{issue.category} · {issue.time}</Text>
+                    </View>
+                    <View style={[styles.issueStatus, issue.status === 'Open' ? styles.issueStatusOpen : styles.issueStatusProgress]}>
+                      <Text style={[styles.issueStatusText, issue.status === 'Open' ? styles.issueStatusTextOpen : styles.issueStatusTextProgress]}>{issue.status}</Text>
+                    </View>
+                    <PremiumPressable
+                      style={styles.issueDelete}
+                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Delete ${issue.title}`}
+                      onPress={() => removeIssue(issue.id)}
+                    >
+                      <Feather name="trash-2" size={16} color={theme.colors.textSecondary} />
+                    </PremiumPressable>
+                  </View>
+                );
+              })
+            ) : (
+              <EmptyState
+                icon="tool"
+                title="No open issues"
+                description="Everything is running smoothly. Report a new issue anytime from Quick actions."
+              />
+            )}
+          </ScreenEntrance>
+
+          {/* 8. Community Event Card */}
+          <ScreenEntrance delay={250}>
             <View style={styles.eventCard}>
               <View style={styles.eventContent}>
-                <Text style={styles.eventTitle}>Community dinner this Sunday! 🎉</Text>
-                <Text style={styles.eventDesc}>Join us for a fun evening at the Club House.</Text>
-                <TouchableOpacity style={styles.eventLink} onPress={() => {}}>
+                <Text style={styles.eventTitle}>{nextEvent ? nextEvent.title : 'No upcoming events'}</Text>
+                <Text style={styles.eventDesc}>{nextEvent
+                  ? `${eventDateLabel}${nextEvent.location ? ` · ${nextEvent.location}` : ''}${nextEvent.time ? ` · ${nextEvent.time}` : ''}`
+                  : 'Check the calendar for upcoming community activities.'}</Text>
+                <PremiumPressable style={styles.eventLink} onPress={() => router.push('/calendar')}>
                   <Text style={styles.eventLinkText}>View details</Text>
-                  <Feather name="arrow-right" size={14} color={theme.colors.accent} style={{marginLeft: 4}} />
-                </TouchableOpacity>
+                  <Feather name="arrow-right" size={14} color={theme.colors.accent} style={{ marginLeft: 4 }} />
+                </PremiumPressable>
               </View>
-              <Image 
-                source={require('../../assets/community-event-illustration.jpg')} 
+              <Image
+                source={require('../../assets/community-event-illustration.jpg')}
                 style={styles.eventImage}
                 resizeMode="cover"
               />
             </View>
-          </AnimatedEntrance>
-          
+          </ScreenEntrance>
         </View>
+
+        <QuickActionsEditorModal
+          visible={isQuickActionsVisible}
+          actions={quickActions}
+          onClose={() => setIsQuickActionsVisible(false)}
+          onSave={(updated) => { setQuickActions(updated); setIsQuickActionsVisible(false); }}
+        />
+        <AddVisitorModal visible={isAddVisitorVisible} onClose={() => setIsAddVisitorVisible(false)} />
       </ScrollView>
     </View>
   );
@@ -210,306 +339,395 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: theme.colors.background,
   },
-  heroContainer: {
-    width: '100%',
-    position: 'relative',
-    overflow: 'hidden',
-    paddingBottom: 24,
-    backgroundColor: theme.colors.background, // warm ivory placeholder
+  bgWrapper: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
   },
-  heroImageAbsolute: {
+  bgImage: {
+    width: '100%',
+  },
+  bgOverlay: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
-    width: '100%',
-    height: '100%',
+    backgroundColor: 'rgba(249, 247, 242, 0.82)',
   },
-  heroOverlay: {
-    backgroundColor: 'rgba(249, 247, 242, 0.35)', // subtle ivory translucent overlay to aid text readability without hiding the image
-    paddingBottom: 48,
+  scrollContent: {
+    backgroundColor: 'transparent',
   },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
+  headerSection: {
+    paddingHorizontal: 20,
     paddingBottom: 16,
   },
-  logoImage: {
-    width: 140, // Increased size
-    height: 44,
-  },
-  headerRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  bellIcon: {
-    marginRight: 16,
-    position: 'relative',
-  },
-  unreadDot: {
-    position: 'absolute',
-    top: 0,
-    right: 2,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: theme.colors.error,
-    borderWidth: 1,
-    borderColor: '#FFF',
-  },
-  avatarPlaceholder: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: 'rgba(0,0,0,0.1)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  avatarText: {
-    fontFamily: 'PlusJakartaSans_600SemiBold',
-    color: theme.colors.textPrimary,
-  },
   greetingContainer: {
-    paddingHorizontal: 16,
-    marginTop: 8,
+    marginTop: 6,
   },
   greetingText: {
     fontFamily: 'PlusJakartaSans_500Medium',
-    fontSize: 14,
-    color: theme.colors.textSecondary,
-    marginBottom: 2,
+    fontSize: 18,
+    letterSpacing: 0.1,
+    color: '#6B7280',
+    marginBottom: 4,
+  },
+  availabilityBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#E8F5E9',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 100,
+    gap: 6,
+  },
+  availabilityBadgeAway: {
+    backgroundColor: '#FEF3C7',
+  },
+  availabilityDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: theme.colors.success,
+  },
+  availabilityDotAway: {
+    backgroundColor: '#D97706',
+  },
+  availabilityText: {
+    fontFamily: 'PlusJakartaSans_700Bold',
+    fontSize: 12,
+    color: theme.colors.primary,
+  },
+  availabilityTextAway: {
+    color: '#B45309',
   },
   nameRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 6,
+    justifyContent: 'space-between',
+    width: '100%',
+    marginBottom: 10,
+  },
+  nameLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexShrink: 1,
   },
   nameText: {
     fontFamily: 'PlusJakartaSans_700Bold',
-    fontSize: 26,
-    color: theme.colors.textPrimary,
+    fontSize: 36,
+    lineHeight: 42,
+    letterSpacing: -0.7,
+    color: '#111827',
   },
   waveEmoji: {
-    fontSize: 22,
+    fontSize: 30,
     marginLeft: 8,
   },
   unitChip: {
-    backgroundColor: '#FFF',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-    alignSelf: 'flex-start',
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 100,
+    marginLeft: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
+    shadowOpacity: 0.04,
+    shadowRadius: 5,
     elevation: 2,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.04)',
   },
   unitChipText: {
-    fontFamily: 'PlusJakartaSans_600SemiBold',
-    fontSize: 11,
+    fontFamily: 'PlusJakartaSans_700Bold',
+    fontSize: 14,
     color: theme.colors.textPrimary,
   },
-  contentWrapper: {
-    flex: 1,
-    backgroundColor: theme.colors.background,
+  heroWrapper: {
+    paddingHorizontal: 20,
+    marginBottom: 20,
   },
-  visitorCard: {
-    backgroundColor: theme.colors.primary,
-    borderRadius: 16,
-    padding: 14,
-    marginHorizontal: 16,
-    marginTop: -32,
-    shadowColor: theme.colors.primary,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.2,
-    shadowRadius: 10,
-    elevation: 6,
+  heroWrapperHidden: {
+    display: 'none',
   },
-  visitorHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
+  heroImageContainer: {
+    position: 'relative',
+    width: '100%',
+    height: 320,
+    borderRadius: 20,
+    overflow: 'hidden',
   },
-  visitorInfo: {
-    flex: 1,
+  heroImageContainerHidden: {
+    position: 'relative',
+    width: '100%',
+    height: 320,
+    borderRadius: 20,
+    overflow: 'hidden',
+    display: 'none',
   },
-  visitorName: {
-    fontFamily: 'PlusJakartaSans_600SemiBold',
-    color: '#FFFFFF',
-    fontSize: 14,
-    marginBottom: 2,
+  heroImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 20,
   },
-  visitorDetails: {
-    fontFamily: 'PlusJakartaSans_400Regular',
-    color: 'rgba(255,255,255,0.8)',
-    fontSize: 11,
+  availabilityBadgeOnImage: {
+    position: 'absolute',
+    top: 24,
+    right: 24,
+    borderWidth: 1.5,
+    borderColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.18,
+    shadowRadius: 4,
+    elevation: 3,
   },
-  visitorAvatarPlaceholder: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  visitorAvatarText: {
-    fontFamily: 'PlusJakartaSans_600SemiBold',
-    color: '#FFFFFF',
-    fontSize: 14,
-  },
-  visitorActions: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  visitorBtnOutline: {
-    flex: 1,
-    height: 32,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.3)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  visitorBtnOutlineText: {
-    fontFamily: 'PlusJakartaSans_600SemiBold',
-    color: '#FFFFFF',
-    fontSize: 12,
-  },
-  visitorBtnSolid: {
-    flex: 1,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: theme.colors.accent,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  visitorBtnSolidText: {
-    fontFamily: 'PlusJakartaSans_600SemiBold',
-    color: '#FFFFFF',
-    fontSize: 12,
+  mainContent: {
+    paddingHorizontal: 20,
   },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-    marginTop: 20,
-    paddingHorizontal: 16,
+    alignItems: 'baseline',
+    marginBottom: 14,
+    marginTop: 8,
+    paddingHorizontal: 2,
   },
   sectionTitle: {
     fontFamily: 'PlusJakartaSans_700Bold',
     fontSize: 16,
-    color: theme.colors.textPrimary,
+    letterSpacing: -0.3,
+    color: '#111827',
   },
   sectionLink: {
     fontFamily: 'PlusJakartaSans_600SemiBold',
-    fontSize: 12,
+    fontSize: 13,
     color: theme.colors.accent,
   },
-  statsRow: {
+  glanceGrid: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 6,
-    paddingHorizontal: 16,
+    flexWrap: 'wrap',
+    gap: 12,
+    marginBottom: 20,
   },
-  statCard: {
-    flex: 1,
-    paddingVertical: 10,
-    paddingHorizontal: 6,
-    alignItems: 'flex-start',
-    borderRadius: 10,
-  },
-  statIconWrapper: {
-    flexDirection: 'row',
+  glanceCard: {
+    flexGrow: 1,
+    flexBasis: 0,
+    minWidth: 148,
+    minHeight: 120,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    borderWidth: 1.5,
+    borderColor: '#E0E4E2',
+    borderBottomWidth: 6,
+    borderBottomColor: '#CCD1D3',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
+    padding: 18,
     alignItems: 'center',
-    marginBottom: 4,
-    gap: 4,
+    justifyContent: 'center',
   },
-  statNumber: {
+  glanceCardPressed: {
+    borderBottomWidth: 2,
+  },
+  glanceValue: {
     fontFamily: 'PlusJakartaSans_700Bold',
-    fontSize: 16,
+    fontSize: 30,
+    lineHeight: 34,
+    letterSpacing: -0.6,
     color: theme.colors.textPrimary,
   },
-  statLabel: {
-    fontFamily: 'PlusJakartaSans_500Medium',
-    fontSize: 10,
+  glanceLabel: {
+    fontFamily: 'PlusJakartaSans_600SemiBold',
+    fontSize: 14,
+    lineHeight: 19,
     color: theme.colors.textSecondary,
+    marginTop: 4,
+    textAlign: 'center',
+  },
+  issueCard: {
+    backgroundColor: theme.colors.surface,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    padding: 14,
+    borderRadius: 18,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.04)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  issueIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  issueInfo: {
+    flex: 1,
+  },
+  issueTitle: {
+    fontFamily: 'PlusJakartaSans_700Bold',
+    fontSize: 15,
+    letterSpacing: -0.2,
+    color: theme.colors.textPrimary,
+    marginBottom: 2,
+  },
+  issueMeta: {
+    fontFamily: 'PlusJakartaSans_400Regular',
+    fontSize: 12,
+    color: theme.colors.textSecondary,
+  },
+  issueStatus: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 100,
+  },
+  issueStatusOpen: {
+    backgroundColor: '#FEF3C7',
+  },
+  issueStatusProgress: {
+    backgroundColor: '#EFF6FF',
+  },
+  issueStatusText: {
+    fontFamily: 'PlusJakartaSans_700Bold',
+    fontSize: 11,
+  },
+  issueStatusTextOpen: {
+    color: '#B45309',
+  },
+  issueStatusTextProgress: {
+    color: '#1D4ED8',
+  },
+  issueDelete: {
+    marginLeft: 10,
+    padding: 2,
   },
   actionsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    gap: 8,
+    paddingHorizontal: 2,
+    marginBottom: 20,
   },
-  actionCard: {
-    flex: 1,
-    backgroundColor: '#FFF',
-    paddingVertical: 12,
-    paddingHorizontal: 4,
-    borderRadius: 12,
+  gateEmptyCard: {
+    flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: theme.colors.surface,
+    borderRadius: 20,
     borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.05)',
+    borderColor: 'rgba(0,0,0,0.04)',
+    padding: 14,
+    marginBottom: 20,
+    gap: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.03,
+    shadowRadius: 8,
+    elevation: 1,
   },
-  actionIconContainer: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
+  gateEmptyIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#E8F5E9',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 6,
+  },
+  gateEmptyTextWrap: {
+    flex: 1,
+  },
+  gateEmptyTitle: {
+    fontFamily: 'PlusJakartaSans_700Bold',
+    fontSize: 15,
+    color: theme.colors.textPrimary,
+    marginBottom: 2,
+  },
+  gateEmptyDesc: {
+    fontFamily: 'PlusJakartaSans_400Regular',
+    fontSize: 12,
+    color: theme.colors.textSecondary,
+    lineHeight: 17,
+  },
+  actionItem: {
+    alignItems: 'center',
+    width: 100,
+  },
+  actionCircle: {
+    marginBottom: 8,
+  },
+  actionIconContainer: {
+    width: 76,
+    height: 76,
+    borderRadius: 38,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    elevation: 2,
   },
   actionLabel: {
-    fontFamily: 'PlusJakartaSans_500Medium',
-    fontSize: 10,
-    color: theme.colors.textPrimary,
+    fontFamily: 'PlusJakartaSans_600SemiBold',
+    fontSize: 14,
+    color: '#1F2937',
     textAlign: 'center',
+    lineHeight: 18,
   },
   eventCard: {
     flexDirection: 'row',
-    marginHorizontal: 16,
-    marginTop: 20,
-    padding: 12,
-    borderRadius: 14,
-    backgroundColor: '#FDFBF7', 
-    borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.05)',
+    padding: 16,
+    borderRadius: 20,
+    backgroundColor: '#FBF5ED',
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(210, 125, 103, 0.12)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.03,
+    shadowRadius: 12,
+    elevation: 2,
+    marginBottom: 20,
   },
   eventContent: {
     flex: 1,
-    paddingRight: 12,
+    paddingRight: 14,
   },
   eventTitle: {
     fontFamily: 'PlusJakartaSans_700Bold',
-    fontSize: 14,
-    color: theme.colors.textPrimary,
+    fontSize: 15,
+    letterSpacing: -0.3,
+    color: '#2A1810',
     marginBottom: 4,
   },
   eventDesc: {
     fontFamily: 'PlusJakartaSans_400Regular',
-    fontSize: 11,
-    color: theme.colors.textSecondary,
-    marginBottom: 8,
-    lineHeight: 16,
+    fontSize: 12,
+    color: '#736154',
+    marginBottom: 10,
+    lineHeight: 17,
   },
   eventLink: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   eventLinkText: {
-    fontFamily: 'PlusJakartaSans_600SemiBold',
-    fontSize: 12,
+    fontFamily: 'PlusJakartaSans_700Bold',
+    fontSize: 13,
     color: theme.colors.accent,
   },
   eventImage: {
-    width: 64,
-    height: 64,
-    borderRadius: 10,
+    width: 82,
+    height: 82,
+    borderRadius: 14,
   },
 });

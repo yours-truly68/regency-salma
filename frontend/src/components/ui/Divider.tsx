@@ -1,11 +1,11 @@
 import React from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, StyleProp, ViewStyle } from 'react-native';
 import { Text } from './Text';
 import { theme } from '../../theme';
 
-export function Divider() {
+export function Divider({ style }: { style?: StyleProp<ViewStyle> }) {
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, style]}>
       <View style={styles.line} />
       <Text style={styles.text}>or</Text>
       <View style={styles.line} />

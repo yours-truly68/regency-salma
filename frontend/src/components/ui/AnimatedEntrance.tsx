@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { Animated, ViewStyle } from 'react-native';
+import { Animated, Easing, ViewStyle } from 'react-native';
 
 interface AnimatedEntranceProps {
   children: React.ReactNode;
@@ -15,10 +15,10 @@ export function AnimatedEntrance({
   delay = 0,
   style,
   direction = 'up',
-  distance = 20,
-  duration = 400,
+  distance = 24,
+  duration = 480,
 }: AnimatedEntranceProps) {
-  const opacity = useRef(new Animated.Value(0)).current;
+  const opacity = useRef(new Animated.Value(0.96)).current;
   const translate = useRef(new Animated.Value(direction === 'none' ? 0 : distance)).current;
 
   useEffect(() => {
@@ -28,12 +28,13 @@ export function AnimatedEntrance({
         Animated.timing(opacity, {
           toValue: 1,
           duration,
+          easing: Easing.out(Easing.cubic),
           useNativeDriver: true,
         }),
-        Animated.spring(translate, {
+        Animated.timing(translate, {
           toValue: 0,
-          friction: 8,
-          tension: 40,
+          duration,
+          easing: Easing.out(Easing.cubic),
           useNativeDriver: true,
         }),
       ]),
