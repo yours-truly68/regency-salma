@@ -1,11 +1,16 @@
-import React, { useState } from 'react';
-import { View, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
-import { useRouter } from 'expo-router';
+import { PremiumPressable } from '../../../src/components/ui/PremiumPressable';
 import { Feather } from '@expo/vector-icons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import * as Clipboard from 'expo-clipboard';
+import React, { useState } from 'react';
+import { View, StyleSheet, ScrollView } from 'react-native';
+import { useRouter } from 'expo-router';
 import { Text } from '../../../src/components/ui/Text';
 import { Button } from '../../../src/components/ui/Button';
-import { AnimatedEntrance } from '../../../src/components/ui/AnimatedEntrance';
+import { ScreenEntrance } from '../../../src/components/ui/ScreenEntrance';
+import { VisitorApprovalCard } from '../../../src/components/visitor-approval-card';
+import { AddVisitorModal } from '../../../src/components/add-visitor-modal';
+import { AppHeader } from '../../../src/components/ui/AppHeader';
+import { useScreenInsets } from '../../../src/hooks/useScreenInsets';
 import { theme } from '../../../src/theme';
 
 const FIXTURES = [
@@ -16,12 +21,37 @@ const FIXTURES = [
 
 export default function VisitorsScreen() {
   const router = useRouter();
-  const insets = useSafeAreaInsets();
+  const { bottom, bottomClearance } = useScreenInsets(false);
   const [activeTab, setActiveTab] = useState<'upcoming'|'history'>('upcoming');
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [visitors, setVisitors] = useState(FIXTURES);
+
+  const handleDeleteVisitor = (id: string) => {
+    setVisitors((prev) => prev.filter((v) => v.id !== id));
+  };
+
+  const handleCopyOtp = async (id: string, otp: string) => {
+    await Clipboard.setStringAsync(otp);
+    setCopiedId(id);
+    setTimeout(() => setCopiedId(null), 1600);
+  };
 
   const renderVisitorCard = (visitor: { id: string; name: string; type: string; time: string; status: string; group: string }, index: number) => {
+    if (visitor.status === 'pending') {
+      return (
+        <ScreenEntrance key={visitor.id} delay={100 + index * 100}>
+          <VisitorApprovalCard
+            visitor={{ id: visitor.id, name: visitor.name, type: visitor.type, time: visitor.time, otp: '3941' }}
+            onDelete={handleDeleteVisitor}
+            onPress={() => router.push(`/visitors/${visitor.id}`)}
+          />
+        </ScreenEntrance>
+      );
+    }
+
     return (
-      <AnimatedEntrance key={visitor.id} delay={100 + index * 100}>
+      <ScreenEntrance key={visitor.id} delay={100 + index * 100}>
         <View style={styles.card}>
           <View style={styles.cardHeader}>
             <View style={styles.avatar}>
@@ -31,78 +61,63 @@ export default function VisitorsScreen() {
               <Text style={styles.visitorName}>{visitor.name}</Text>
               <Text style={styles.visitorMeta}>{visitor.type} · {visitor.time}</Text>
             </View>
-            <View style={[styles.statusBadge, visitor.status === 'approved' ? styles.statusApproved : styles.statusPending]}>
-              <Text style={[styles.statusText, visitor.status === 'approved' ? styles.statusTextApproved : styles.statusTextPending]}>
-                {visitor.status === 'approved' ? 'Approved' : 'Pending'}
-              </Text>
+            <View style={[styles.statusBadge, styles.statusApproved]}>
+              <Text style={[styles.statusText, styles.statusTextApproved]}>Approved</Text>
             </View>
           </View>
-
-          {visitor.status === 'pending' ? (
-            <View style={styles.cardActions}>
-              <TouchableOpacity style={styles.actionBtnOutline}>
-                <Text style={styles.actionBtnOutlineText}>Decline</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.actionBtnSolid} onPress={() => router.push(`/visitors/${visitor.id}`)}>
-                <Text style={styles.actionBtnSolidText}>Approve</Text>
-              </TouchableOpacity>
-            </View>
-          ) : (
-            <View style={styles.cardActions}>
-              <TouchableOpacity style={styles.actionBtnOutline} onPress={() => router.push(`/visitors/${visitor.id}`)}>
-                <Text style={styles.actionBtnOutlineText}>View OTP</Text>
-              </TouchableOpacity>
-            </View>
-          )}
         </View>
-      </AnimatedEntrance>
+      </ScreenEntrance>
     );
   };
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} onPress={() => router.back()}>
-          <Feather name="arrow-left" size={24} color={theme.colors.textPrimary} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Visitors</Text>
-        <TouchableOpacity hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-          <Feather name="filter" size={20} color={theme.colors.textPrimary} />
-        </TouchableOpacity>
-      </View>
+    <View style={styles.container}>
+      <AppHeader
+        variant="subscreen"
+        title="Visitors"
+        rightAction={
+          <PremiumPressable
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            style={styles.headerIconBtn}
+          >
+            <Feather name="filter" size={20} color={theme.colors.textPrimary} />
+          </PremiumPressable>
+        }
+      />
 
       {/* Tabs */}
       <View style={styles.tabs}>
-        <TouchableOpacity 
+        <PremiumPressable
           style={[styles.tab, activeTab === 'upcoming' && styles.tabActive]}
           onPress={() => setActiveTab('upcoming')}
         >
           <Text style={[styles.tabText, activeTab === 'upcoming' && styles.tabTextActive]}>Upcoming</Text>
           <View style={styles.badge}><Text style={styles.badgeText}>3</Text></View>
-        </TouchableOpacity>
-        <TouchableOpacity 
+        </PremiumPressable>
+        <PremiumPressable
           style={[styles.tab, activeTab === 'history' && styles.tabActive]}
           onPress={() => setActiveTab('history')}
         >
           <Text style={[styles.tabText, activeTab === 'history' && styles.tabTextActive]}>History</Text>
-        </TouchableOpacity>
+        </PremiumPressable>
       </View>
 
-      <ScrollView contentContainerStyle={styles.listContent}>
+      <ScrollView contentContainerStyle={[styles.listContent, { paddingBottom: bottomClearance + 60 }]}>
         {/* Today Group */}
         <Text style={styles.groupHeader}>Today</Text>
-        {FIXTURES.filter(f => f.group === 'Today').map(renderVisitorCard)}
-        
+        {visitors.filter(f => f.group === 'Today').map(renderVisitorCard)}
+
         {/* Tomorrow Group */}
         <Text style={styles.groupHeader}>Tomorrow</Text>
-        {FIXTURES.filter(f => f.group === 'Tomorrow').map(renderVisitorCard)}
+        {visitors.filter(f => f.group === 'Tomorrow').map(renderVisitorCard)}
       </ScrollView>
 
       {/* Bottom Action */}
-      <View style={[styles.bottomAction, { paddingBottom: Math.max(insets.bottom, 16) }]}>
-        <Button label="Add New Visitor" onPress={() => {}} />
+      <View style={[styles.bottomAction, { paddingBottom: Math.max(bottom, 16) }]}>
+        <Button label="Add New Visitor" onPress={() => setShowAddModal(true)} />
       </View>
+
+      <AddVisitorModal visible={showAddModal} onClose={() => setShowAddModal(false)} />
     </View>
   );
 }
@@ -110,30 +125,26 @@ export default function VisitorsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.surface,
+    backgroundColor: theme.colors.background,
   },
-  header: {
-    flexDirection: 'row',
+  headerIconBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  headerTitle: {
-    fontFamily: 'PlusJakartaSans_700Bold',
-    fontSize: 18,
-    color: theme.colors.textPrimary,
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.03)',
   },
   tabs: {
     flexDirection: 'row',
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.border,
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
   },
   tab: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
+    paddingVertical: 14,
     marginRight: 24,
     borderBottomWidth: 2,
     borderBottomColor: 'transparent',
@@ -143,46 +154,47 @@ const styles = StyleSheet.create({
   },
   tabText: {
     fontFamily: 'PlusJakartaSans_600SemiBold',
-    fontSize: 14,
+    fontSize: 15,
     color: theme.colors.textSecondary,
   },
   tabTextActive: {
     color: theme.colors.primary,
   },
   badge: {
-    backgroundColor: theme.colors.error,
-    borderRadius: 10,
-    paddingHorizontal: 6,
+    backgroundColor: theme.colors.accent,
+    borderRadius: 100,
+    paddingHorizontal: 8,
     paddingVertical: 2,
-    marginLeft: 6,
+    marginLeft: 8,
   },
   badgeText: {
     fontFamily: 'PlusJakartaSans_700Bold',
-    fontSize: 10,
+    fontSize: 11,
     color: '#FFF',
   },
   listContent: {
-    padding: 16,
-    paddingBottom: 100,
+    padding: 20,
+    paddingBottom: 110,
   },
   groupHeader: {
     fontFamily: 'PlusJakartaSans_700Bold',
-    fontSize: 14,
+    fontSize: 16,
+    letterSpacing: -0.3,
     color: theme.colors.textPrimary,
-    marginBottom: 12,
+    marginBottom: 14,
     marginTop: 8,
   },
   card: {
-    backgroundColor: '#FFF',
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: theme.colors.border,
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
+    borderColor: 'rgba(0,0,0,0.04)',
+    borderRadius: 18,
+    padding: 20,
+    marginBottom: 18,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.03,
-    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.04,
+    shadowRadius: 10,
     elevation: 2,
   },
   cardHeader: {
@@ -191,17 +203,19 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 46,
+    height: 46,
+    borderRadius: 23,
     backgroundColor: theme.colors.background,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
+    marginRight: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.05)',
   },
   avatarText: {
     fontFamily: 'PlusJakartaSans_700Bold',
-    fontSize: 16,
+    fontSize: 18,
     color: theme.colors.textPrimary,
   },
   cardInfo: {
@@ -209,66 +223,37 @@ const styles = StyleSheet.create({
   },
   visitorName: {
     fontFamily: 'PlusJakartaSans_700Bold',
-    fontSize: 14,
+    fontSize: 16,
+    letterSpacing: -0.2,
     color: theme.colors.textPrimary,
-    marginBottom: 2,
+    marginBottom: 3,
   },
   visitorMeta: {
-    fontFamily: 'PlusJakartaSans_500Medium',
-    fontSize: 12,
+    fontFamily: 'PlusJakartaSans_400Regular',
+    fontSize: 13,
     color: theme.colors.textSecondary,
   },
   statusBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-  },
-  statusPending: {
-    backgroundColor: '#FFF3E0',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 100,
   },
   statusApproved: {
-    backgroundColor: '#E8F5E9',
+    backgroundColor: '#ECFDF5',
   },
   statusText: {
     fontFamily: 'PlusJakartaSans_600SemiBold',
-    fontSize: 10,
-  },
-  statusTextPending: {
-    color: '#E65100',
+    fontSize: 12,
   },
   statusTextApproved: {
-    color: '#2E7D32',
+    color: '#047857',
   },
   cardActions: {
     flexDirection: 'row',
     gap: 12,
   },
-  actionBtnOutline: {
+  actionButton: {
     flex: 1,
-    height: 36,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    borderRadius: 18,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  actionBtnOutlineText: {
-    fontFamily: 'PlusJakartaSans_600SemiBold',
-    fontSize: 13,
-    color: theme.colors.textPrimary,
-  },
-  actionBtnSolid: {
-    flex: 1,
-    height: 36,
-    backgroundColor: theme.colors.primary,
-    borderRadius: 18,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  actionBtnSolidText: {
-    fontFamily: 'PlusJakartaSans_600SemiBold',
-    fontSize: 13,
-    color: '#FFF',
   },
   bottomAction: {
     position: 'absolute',
@@ -276,8 +261,14 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     backgroundColor: theme.colors.surface,
-    padding: 16,
+    paddingHorizontal: 20,
+    paddingTop: 16,
     borderTopWidth: 1,
     borderTopColor: theme.colors.border,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 4,
   }
 });
