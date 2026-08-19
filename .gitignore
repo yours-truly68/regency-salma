@@ -144,6 +144,7 @@ project.pbxproj.local
 # ======================
 # Project-specific scratch/tooling
 # ======================
+reference-images/hero-image.png
 calibrate_home.js
 fix_all.js
 fix_appicon.js
