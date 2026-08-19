@@ -1,6 +1,6 @@
 import React from 'react';
-import { View, TextInput, StyleSheet } from 'react-native';
 import { Feather } from '@expo/vector-icons';
+import { View, TextInput, StyleSheet } from 'react-native';
 import { Text } from './Text';
 import { theme } from '../../theme';
 

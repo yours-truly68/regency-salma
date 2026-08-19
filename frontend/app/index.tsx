@@ -1,12 +1,22 @@
 import { Redirect } from 'expo-router';
-
-// DEVELOPMENT FIXTURE: Set to true to bypass auth and view the authenticated Home dashboard during UI development.
-const DEV_BYPASS_AUTH = true;
+import { View, ActivityIndicator } from 'react-native';
+import { useSession } from '../src/store/auth';
+import { theme } from '../src/theme';
 
 export default function Index() {
-  if (DEV_BYPASS_AUTH) {
+  const { isLoading, isAuthenticated } = useSession();
+
+  if (isLoading) {
+    return (
+      <View style={{ flex: 1, backgroundColor: theme.colors.background, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="small" color={theme.colors.primary} />
+      </View>
+    );
+  }
+
+  if (isAuthenticated) {
     return <Redirect href="/(app)/home" />;
   }
-  // Redirect to login by default for Stage 1
+
   return <Redirect href="/(auth)/login" />;
 }

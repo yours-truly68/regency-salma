@@ -1,10 +1,18 @@
 import React from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, StyleProp, ViewStyle } from 'react-native';
 import { theme } from '../../theme';
 
-export function ProgressDots({ count, activeIndex }: { count: number, activeIndex: number }) {
+export function ProgressDots({
+  count,
+  activeIndex,
+  style,
+}: {
+  count: number;
+  activeIndex: number;
+  style?: StyleProp<ViewStyle>;
+}) {
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, style]}>
       {Array.from({length: count}).map((_, i) => (
         <View key={i} style={[styles.dot, i === activeIndex && styles.activeDot]} />
       ))}

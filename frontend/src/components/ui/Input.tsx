@@ -1,29 +1,76 @@
-import React, { useState } from 'react';
-import { TextInput, View, StyleSheet, TextInputProps, TouchableOpacity } from 'react-native';
+import { PremiumPressable } from './PremiumPressable';
 import { Feather } from '@expo/vector-icons';
+import React, { useState } from 'react';
+import {
+  TextInput,
+  View,
+  StyleSheet,
+  TextInputProps,
+  StyleProp,
+  ViewStyle,
+  TextStyle,
+  FocusEvent,
+  BlurEvent,
+} from 'react-native';
 import { Text } from './Text';
 import { theme } from '../../theme';
 
 interface InputProps extends TextInputProps {
   label: string;
   error?: string;
+  containerStyle?: StyleProp<ViewStyle>;
+  inputStyle?: StyleProp<TextStyle>;
 }
 
-export function Input({ label, error, style, secureTextEntry, ...props }: InputProps) {
+export function Input({
+  label,
+  error,
+  style,
+  containerStyle,
+  inputStyle,
+  secureTextEntry,
+  onFocus,
+  onBlur,
+  ...props
+}: InputProps) {
   const [isSecure, setIsSecure] = useState(secureTextEntry);
+  const [isFocused, setIsFocused] = useState(false);
+
+  const handleFocus = (e: FocusEvent) => {
+    setIsFocused(true);
+    onFocus?.(e);
+  };
+
+  const handleBlur = (e: BlurEvent) => {
+    setIsFocused(false);
+    onBlur?.(e);
+  };
 
   return (
-    <View style={styles.container}>
-      <Text variant="label" style={styles.label}>{label}</Text>
-      <View style={[styles.inputWrapper, error && styles.inputError, style]}>
+    <View style={[styles.container, containerStyle]}>
+      {label ? (
+        <Text variant="label" style={styles.label}>{label}</Text>
+      ) : null}
+
+      <View
+        style={[
+          styles.inputWrapper,
+          isFocused && styles.inputFocused,
+          error && styles.inputError,
+          style,
+        ]}
+      >
         <TextInput
-          style={styles.input}
+          style={[styles.input, inputStyle]}
           placeholderTextColor={theme.colors.textSecondary}
           secureTextEntry={isSecure}
+          onFocus={handleFocus}
+          onBlur={handleBlur}
           {...props}
         />
+
         {secureTextEntry && (
-          <TouchableOpacity
+          <PremiumPressable
             style={styles.eyeIcon}
             onPress={() => setIsSecure(!isSecure)}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
@@ -31,11 +78,14 @@ export function Input({ label, error, style, secureTextEntry, ...props }: InputP
             <Feather
               name={isSecure ? 'eye-off' : 'eye'}
               size={20}
-              color={theme.colors.textSecondary}
+              color={
+                isFocused ? theme.colors.primary : theme.colors.textSecondary
+              }
             />
-          </TouchableOpacity>
+          </PremiumPressable>
         )}
       </View>
+
       {error && <Text style={styles.errorText}>{error}</Text>}
     </View>
   );
@@ -43,40 +93,58 @@ export function Input({ label, error, style, secureTextEntry, ...props }: InputP
 
 const styles = StyleSheet.create({
   container: {
-    marginBottom: theme.spacing.m,
+    marginBottom: 22,
   },
   label: {
-    marginBottom: theme.spacing.xs,
+    marginBottom: 8,
     color: theme.colors.textPrimary,
+    fontFamily: 'PlusJakartaSans_600SemiBold',
+    fontSize: 16,
   },
   inputWrapper: {
-    height: 48,
-    borderWidth: 1,
+    height: 66,
+    borderWidth: 1.5,
     borderColor: theme.colors.border,
-    borderRadius: theme.radii.m,
+    borderRadius: 18,
     backgroundColor: theme.colors.surface,
     flexDirection: 'row',
     alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.03,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  inputFocused: {
+    borderColor: theme.colors.primary,
+    backgroundColor: '#FFFFFF',
+    shadowColor: theme.colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 10,
+    elevation: 3,
   },
   input: {
     flex: 1,
     height: '100%',
-    paddingHorizontal: theme.spacing.m,
+    paddingHorizontal: 18,
     color: theme.colors.textPrimary,
-    fontSize: 16,
+    fontFamily: 'PlusJakartaSans_500Medium',
+    fontSize: 18,
   },
   inputError: {
     borderColor: theme.colors.error,
   },
   eyeIcon: {
-    paddingHorizontal: theme.spacing.m,
+    paddingHorizontal: 18,
     justifyContent: 'center',
     alignItems: 'center',
     height: '100%',
   },
   errorText: {
     color: theme.colors.error,
-    fontSize: 12,
-    marginTop: theme.spacing.xs,
+    fontSize: 13,
+    fontFamily: 'PlusJakartaSans_500Medium',
+    marginTop: 6,
   },
 });
